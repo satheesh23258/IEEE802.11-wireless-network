@@ -15,7 +15,7 @@ python src/train.py
 
 Training uses both `data/dataset_complete.csv` and `data/dataset_P_A_auto.csv`. It removes duplicates, normalizes the header formats, and uses six real measurements: RCPI/RSSI, SNR, packet loss, RTT, received throughput, and current TX rate. Training saves `models/best_model.pkl`, `models/model_metadata.json`, and evaluation results in `results/metrics/`, including model comparison, classification report, and confusion matrix.
 
-The generated `models/best_model.pkl` file is excluded from Git because it is larger than GitHub's standard 100 MB file limit. Recreate it after cloning with `python src/train.py`.
+The generated `models/best_model.pkl` file is stored with Git LFS because it is larger than GitHub's standard 100 MB file limit. If LFS is unavailable, recreate it after cloning with `python src/train.py`.
 
 ## How to Launch the Scan-and-Analyze GUI
 ```bash
