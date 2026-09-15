@@ -1,0 +1,53 @@
+# AI-Based Transmission Rate Selection in IEEE 802.11 Networks
+
+This system scans nearby Wi-Fi networks, lets the user select one, and recommends an IEEE 802.11 MCS using the best saved classifier selected from Random Forest, Decision Tree, Logistic Regression, and Gradient Boosting. The uploaded datasets provide MCS TX classes 1 through 11.
+
+## Setup and Installation
+```bash
+pip install -r requirements.txt
+```
+
+## How to Train
+To run the training pipeline and save the best model:
+```bash
+python src/train.py
+```
+
+Training uses both `data/dataset_complete.csv` and `data/dataset_P_A_auto.csv`. It removes duplicates, normalizes the header formats, and uses six real measurements: RCPI/RSSI, SNR, packet loss, RTT, received throughput, and current TX rate. Training saves `models/best_model.pkl`, `models/model_metadata.json`, and evaluation results in `results/metrics/`, including model comparison, classification report, and confusion matrix.
+
+The generated `models/best_model.pkl` file is excluded from Git because it is larger than GitHub's standard 100 MB file limit. Recreate it after cloning with `python src/train.py`.
+
+## How to Launch the Scan-and-Analyze GUI
+```bash
+python main.py
+```
+
+Click **Scan Nearby Wi-Fi**, select a network, enter connected-network measurements, and click **Analyze Selected Network**. The GUI records successful predictions in `results/predictions/prediction_history.csv`.
+
+## How to Launch Web App
+```bash
+streamlit run app/web_app.py
+```
+
+Then open `http://localhost:8501`.
+
+The dashboard also shows the model's test accuracy, macro F1-score, feature importance, rate adjustment from the current setting, and a warning when the link conditions are weak.
+
+## Wi-Fi scanner behavior
+
+- Windows uses `netsh wlan show networks mode=bssid`.
+- Linux uses `nmcli`; NetworkManager must be installed.
+- A scan can normally expose SSID, BSSID, signal, channel, and security, but drivers may omit some of these fields.
+- Packet loss, latency, throughput, SNR, channel utilization, and current TX rate are connected-network measurements. The GUI leaves them blank until the user supplies real measurements.
+- The application recommends a rate only. It does not change the adapter's hardware rate or connect to protected networks.
+
+## Dataset and target limitation
+
+The uploaded datasets contain MCS TX values from 1 through 11 and do not provide a valid mapping to 6, 12, 24, 36, 48, and 54 Mbps. The application therefore predicts MCS, not a fabricated Mbps value. Channel utilization is also not present and is not invented. The GUI never uses fabricated scan values: unavailable OS values remain unavailable, and missing prediction inputs cause a validation message.
+
+## Troubleshooting
+
+- If no networks are shown, enable the Wi-Fi adapter and run the command for your operating system manually.
+- If Linux reports that `nmcli` is unavailable, install and start NetworkManager.
+- If the model is missing, run `python src/train.py` from the project root.
+- If the GUI cannot predict, enter all six connected-network measurements.

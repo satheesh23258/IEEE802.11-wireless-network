@@ -1,0 +1,34 @@
+{
+  "model": "random_forest",
+  "features": [
+    "rssi",
+    "snr",
+    "packet_loss",
+    "latency",
+    "throughput",
+    "current_transmission_rate"
+  ],
+  "target_classes": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "test_accuracy": 0.8086633927618234,
+  "macro_f1": 0.5730784502587875,
+  "feature_importance": {
+    "rssi": 0.13097627856453892,
+    "snr": 0.12837427961189027,
+    "packet_loss": 0.026940186659159353,
+    "latency": 0.27353388358150266,
+    "throughput": 0.2816012925031099,
+    "current_transmission_rate": 0.15857407907979895
+  }
+}

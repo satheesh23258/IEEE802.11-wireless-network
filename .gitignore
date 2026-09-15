@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+results/predictions/
+models/best_model.pkl
+.venv/
+venv/
+*.log
