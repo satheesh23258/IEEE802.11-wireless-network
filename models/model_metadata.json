@@ -1,34 +1,29 @@
 {
-  "model": "random_forest",
+  "model": "gradient_boosting",
   "features": [
     "rssi",
     "snr",
     "packet_loss",
     "latency",
     "throughput",
+    "channel_utilization",
     "current_transmission_rate"
   ],
   "target_classes": [
-    1,
-    2,
-    3,
-    4,
-    5,
     6,
-    7,
-    8,
-    9,
-    10,
-    11
+    12,
+    24,
+    36
   ],
-  "test_accuracy": 0.8086633927618234,
-  "macro_f1": 0.5730784502587875,
+  "test_accuracy": 0.9826666666666667,
+  "macro_f1": 0.9810815692219125,
   "feature_importance": {
-    "rssi": 0.13097627856453892,
-    "snr": 0.12837427961189027,
-    "packet_loss": 0.026940186659159353,
-    "latency": 0.27353388358150266,
-    "throughput": 0.2816012925031099,
-    "current_transmission_rate": 0.15857407907979895
+    "rssi": 0.028506964256151818,
+    "snr": 0.5465799352363601,
+    "packet_loss": 0.07781339122401218,
+    "latency": 0.027930494502283593,
+    "throughput": 0.2717258839345138,
+    "channel_utilization": 0.047385984099857725,
+    "current_transmission_rate": 5.7346746821009205e-05
   }
 }

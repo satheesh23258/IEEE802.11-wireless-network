@@ -20,6 +20,7 @@ FEATURES = [
     ("Packet loss (%)", "packet_loss"),
     ("Latency (ms)", "latency"),
     ("Throughput (Mbps)", "throughput"),
+    ("Channel utilization (%)", "channel_utilization"),
     ("Current TX rate (Mbps)", "current_transmission_rate"),
 ]
 
@@ -27,7 +28,7 @@ FEATURES = [
 class TransmissionRateApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("AI Wi-Fi Transmission Rate Recommendation")
+        self.root.title("Machine Learning Based Adaptive Transmission Rate Selection in IEEE 802.11 Network")
         self.root.geometry("980x720")
         self.root.minsize(850, 620)
         self.networks = []
@@ -41,8 +42,8 @@ class TransmissionRateApp:
     def build_ui(self):
         header = tk.Frame(self.root, bg="#17324d", padx=18, pady=14)
         header.pack(fill=tk.X)
-        tk.Label(header, text="AI-Based Wi-Fi Transmission Rate Selection", fg="white", bg="#17324d", font=("Segoe UI", 18, "bold")).pack(anchor=tk.W)
-        tk.Label(header, text="Scan real networks, select one, then predict MCS from available measurements.", fg="#d7e6f2", bg="#17324d", font=("Segoe UI", 10)).pack(anchor=tk.W, pady=(4, 0))
+        tk.Label(header, text="Adaptive IEEE 802.11 Transmission Rate Selection", fg="white", bg="#17324d", font=("Segoe UI", 18, "bold")).pack(anchor=tk.W)
+        tk.Label(header, text="Scan real networks, select one, then predict the best rate from live wireless conditions.", fg="#d7e6f2", bg="#17324d", font=("Segoe UI", 10)).pack(anchor=tk.W, pady=(4, 0))
 
         controls = tk.Frame(self.root, padx=18, pady=12)
         controls.pack(fill=tk.X)
@@ -64,7 +65,7 @@ class TransmissionRateApp:
         body.pack(fill=tk.BOTH, expand=True)
         input_frame = ttk.LabelFrame(body, text="Connected-network measurements", padding=10)
         input_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
-        tk.Label(input_frame, text="Scan data is filled automatically. Other values require a connected-network measurement.", wraplength=390, justify=tk.LEFT, fg="#555").grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
+        tk.Label(input_frame, text="Scan data is filled automatically. Enter the live wireless metrics from the selected access point.", wraplength=390, justify=tk.LEFT, fg="#555").grid(row=0, column=0, columnspan=2, sticky=tk.W, pady=(0, 10))
         self.entries = {}
         for row, (label, key) in enumerate(FEATURES, start=1):
             tk.Label(input_frame, text=label).grid(row=row, column=0, sticky=tk.W, pady=4)
@@ -121,10 +122,10 @@ class TransmissionRateApp:
             prediction = int(self.pipeline.predict(prediction_frame)[0])
             confidence = float(max(self.pipeline.predict_proba(prediction_frame)[0]) * 100)
             network = self.networks[int(selected[0])]
-            condition = "Good" if values["packet_loss"] < 5 and values["snr"] >= 20 else "Moderate" if values["packet_loss"] < 15 else "Weak"
-            self.result_label.config(text=f"Recommended MCS\n{prediction}", fg="#18794e")
+            condition = "Good" if values["packet_loss"] < 5 and values["snr"] >= 20 and values["channel_utilization"] < 60 else "Moderate" if values["packet_loss"] < 15 else "Weak"
+            self.result_label.config(text=f"Recommended transmission rate\n{prediction} Mbps", fg="#18794e")
             self.condition_label.config(text=f"Network condition: {condition}\nConfidence: {confidence:.2f}%")
-            self.info_label.config(text="Prediction uses six real dataset measurements. It recommends MCS; it does not change the Wi-Fi adapter settings.")
+            self.info_label.config(text="Prediction uses the live IEEE 802.11 measurements from the adaptive rate-selection dataset. It recommends the best transmission rate and does not change the Wi-Fi adapter settings.")
             self.save_history(network, values, prediction, confidence)
         except ValueError:
             messagebox.showerror("Measurements required", "Enter real measurements for every field before analyzing.")

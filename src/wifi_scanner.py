@@ -16,20 +16,23 @@ def _parse_windows(output):
     current = None
     for raw_line in output.splitlines():
         line = raw_line.strip()
-        if line.startswith("SSID ") and ":" in line:
+        if re.match(r"^SSID\s+\d+\s*:", line, re.IGNORECASE):
             if current and current.get("ssid"):
                 networks.append(current)
-            current = {"ssid": line.split(":", 1)[1].strip(), "bssid": "", "signal": None, "channel": None, "security": "Unknown"}
-        elif current is not None and line.startswith("BSSID ") and ":" in line:
-            current["bssid"] = line.split(":", 1)[1].strip()
-        elif current is not None and line.startswith("Signal") and ":" in line:
-            value = line.split(":", 1)[1].strip().rstrip("%").strip()
-            current["signal"] = int(value) if value.isdigit() else None
-        elif current is not None and line.startswith("Channel") and ":" in line:
-            value = line.split(":", 1)[1].strip()
-            current["channel"] = int(value) if value.isdigit() else None
-        elif current is not None and line.startswith("Authentication") and ":" in line:
-            current["security"] = line.split(":", 1)[1].strip()
+            current = {"ssid": re.split(r"\s*:\s*", line, maxsplit=1)[1], "bssid": "", "signal": None, "signal_percent": None, "channel": None, "security": "Unknown"}
+        elif current is not None and re.match(r"^BSSID\s+\d+\s*:", line, re.IGNORECASE):
+            current["bssid"] = re.split(r"\s*:\s*", line, maxsplit=1)[1]
+        elif current is not None and re.match(r"^Signal\s*:", line, re.IGNORECASE):
+            value = re.split(r"\s*:\s*", line, maxsplit=1)[1].rstrip("%").strip()
+            match = re.search(r"\d+", value)
+            current["signal_percent"] = int(match.group()) if match else None
+            current["signal"] = round(-100 + current["signal_percent"] * 0.8, 1) if match else None
+        elif current is not None and re.match(r"^Channel\s*:", line, re.IGNORECASE):
+            value = re.split(r"\s*:\s*", line, maxsplit=1)[1]
+            match = re.search(r"\d+", value)
+            current["channel"] = int(match.group()) if match else None
+        elif current is not None and re.match(r"^Authentication\s*:", line, re.IGNORECASE):
+            current["security"] = re.split(r"\s*:\s*", line, maxsplit=1)[1].strip()
     if current and current.get("ssid"):
         networks.append(current)
     return networks
@@ -46,7 +49,7 @@ def _parse_linux(output):
             signal_value = int(signal)
         except ValueError:
             signal_value = None
-        networks.append({"ssid": ssid or "<hidden>", "bssid": bssid, "signal": signal_value,
+        networks.append({"ssid": ssid or "<hidden>", "bssid": bssid, "signal": round(-100 + signal_value * 0.8, 1) if signal_value is not None else None, "signal_percent": signal_value,
                          "channel": int(channel) if channel.isdigit() else None, "security": security or "Unknown"})
     return networks
 

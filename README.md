@@ -1,6 +1,6 @@
-# AI-Based Transmission Rate Selection in IEEE 802.11 Networks
+# Machine Learning Based Adaptive Transmission Rate Selection in IEEE 802.11 Networks
 
-This system scans nearby Wi-Fi networks, lets the user select one, and recommends an IEEE 802.11 MCS using the best saved classifier selected from Random Forest, Decision Tree, Logistic Regression, and Gradient Boosting. The uploaded datasets provide MCS TX classes 1 through 11.
+This project implements adaptive IEEE 802.11 transmission-rate selection using machine learning. It reads live wireless measurements such as RSSI, SNR, packet loss, latency, throughput, channel utilization, and current rate, then predicts the best transmission rate for the current network conditions. The main dataset used in this project is `data/WiFi_Transmission_Rate_Recommendation_Dataset_5000.xlsx`.
 
 ## Setup and Installation
 ```bash
@@ -13,7 +13,7 @@ To run the training pipeline and save the best model:
 python src/train.py
 ```
 
-Training uses both `data/dataset_complete.csv` and `data/dataset_P_A_auto.csv`. It removes duplicates, normalizes the header formats, and uses six real measurements: RCPI/RSSI, SNR, packet loss, RTT, received throughput, and current TX rate. Training saves `models/best_model.pkl`, `models/model_metadata.json`, and evaluation results in `results/metrics/`, including model comparison, classification report, and confusion matrix.
+Training uses the new Excel dataset and is compatible with the legacy CSV files as well. It removes duplicates, normalizes the fields, and uses the real IEEE 802.11 measurements from the dataset: RSSI, SNR, packet loss, latency, throughput, channel utilization, and current transmission rate. Training saves `models/best_model.pkl`, `models/model_metadata.json`, and evaluation results in `results/metrics/`, including model comparison, classification report, and confusion matrix.
 
 The generated `models/best_model.pkl` file is stored with Git LFS because it is larger than GitHub's standard 100 MB file limit. If LFS is unavailable, recreate it after cloning with `python src/train.py`.
 

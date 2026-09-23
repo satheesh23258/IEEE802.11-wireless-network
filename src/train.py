@@ -1,29 +1,36 @@
-import joblib
 import json
-import pandas as pd
 from pathlib import Path
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+import joblib
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
+
 try:
     from src.preprocessing import build_wireless_features, load_wireless_training_data
 except ModuleNotFoundError:
     from preprocessing import build_wireless_features, load_wireless_training_data
 
-def run_training_pipeline(csv_path):
-    paths = csv_path if isinstance(csv_path, (list, tuple)) else [csv_path]
-    X, y = build_wireless_features(load_wireless_training_data(paths))
+
+def run_training_pipeline(data_path):
+    paths = data_path if isinstance(data_path, (list, tuple)) else [data_path]
+    dataset = load_wireless_training_data(paths)
+    X, y = build_wireless_features(dataset)
+    if X.empty or y.empty:
+        raise ValueError("No valid training rows were found in the dataset.")
+
     labels = sorted(y.unique().tolist())
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     candidates = {
-        "random_forest": RandomForestClassifier(random_state=42, n_estimators=100, n_jobs=-1),
+        "random_forest": RandomForestClassifier(random_state=42, n_estimators=200, n_jobs=-1),
         "decision_tree": DecisionTreeClassifier(random_state=42, max_depth=16),
         "logistic_regression": LogisticRegression(max_iter=1000, random_state=42),
-        "gradient_boosting": GradientBoostingClassifier(random_state=42, n_estimators=100),
+        "gradient_boosting": GradientBoostingClassifier(random_state=42, n_estimators=200),
     }
     trained = {}
     comparison = []
@@ -60,5 +67,12 @@ def run_training_pipeline(csv_path):
     print(f"Test accuracy: {accuracy_score(y_test, predictions):.4f}")
     print(f"Macro F1-score: {report['macro avg']['f1-score']:.4f}")
 
+
 if __name__ == "__main__":
-    run_training_pipeline(["data/dataset_complete.csv", "data/dataset_P_A_auto.csv"])
+    default_datasets = [
+        "data/WiFi_Transmission_Rate_Recommendation_Dataset_5000.xlsx",
+        "data/dataset_complete.csv",
+        "data/dataset_P_A_auto.csv",
+    ]
+    existing = [path for path in default_datasets if Path(path).exists()]
+    run_training_pipeline(existing if existing else default_datasets)
