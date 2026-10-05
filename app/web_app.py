@@ -130,10 +130,23 @@ def render_network_table(networks):
         )
         return
     network_df = pd.DataFrame(networks)
-    columns = [column for column in ["ssid", "bssid", "signal", "signal_percent", "channel", "security"] if column in network_df]
+    columns = [
+        column
+        for column in [
+            "ssid",
+            "connection_status",
+            "bssid",
+            "signal",
+            "signal_percent",
+            "channel",
+            "security",
+        ]
+        if column in network_df
+    ]
     display_df = network_df[columns].rename(
         columns={
             "ssid": "SSID",
+            "connection_status": "Connection",
             "bssid": "BSSID",
             "signal": "Signal",
             "signal_percent": "Strength",
@@ -244,10 +257,7 @@ st.caption("Live Wi-Fi diagnostics, explainable model recommendations, and train
 
 with st.sidebar:
     st.header("Wireless link parameters")
-    refresh_col, auto_col = st.columns(2)
-    if refresh_col.button("Scan now", icon=":material/refresh:", width="stretch"):
-        scan_and_store()
-    auto_refresh = auto_col.toggle(
+    auto_refresh = st.toggle(
         "Auto scan",
         value=True,
         key="auto_scan_enabled",
@@ -292,14 +302,8 @@ def refresh_wifi_networks():
     if time.time() - st.session_state.get("last_scan_epoch", 0.0) < AUTO_SCAN_INTERVAL_SECONDS:
         return
 
-    previous_networks = st.session_state.networks.copy()
-    previous_error = st.session_state.scan_error
     scan_and_store()
-    if (
-        st.session_state.networks != previous_networks
-        or st.session_state.scan_error != previous_error
-    ):
-        st.rerun()
+    st.rerun()
 
 
 refresh_wifi_networks()
@@ -313,9 +317,36 @@ dashboard_tab, comparison_tab, data_tab, policy_tab = st.tabs([
 ])
 
 with dashboard_tab:
-    st.subheader(f"Nearby Wi-Fi networks ({len(networks)} detected by {platform.system()})")
-    if len(networks) == 1:
-        st.info("Windows currently reports one visible network. Click 'Scan now' after a few seconds to refresh the wireless adapter cache.")
+    scan_col, scan_status_col = st.columns([1, 3])
+    with scan_col:
+        if st.button(
+            "Scan for nearby Wi-Fi",
+            icon=":material/refresh:",
+            type="primary",
+            key="dashboard_scan",
+        ):
+            with st.spinner("Scanning for nearby Wi-Fi networks..."):
+                scan_and_store()
+            st.rerun()
+    networks = st.session_state.networks
+    with scan_status_col:
+        st.caption(
+            f"{len(networks)} network(s) reported by {platform.system()} · "
+            f"Last scan: {st.session_state.last_scan}"
+        )
+
+    st.subheader(f"Nearby Wi-Fi networks ({len(networks)} detected)")
+    if not networks:
+        st.info(
+            "No nearby networks were returned by the operating system. Confirm Wi-Fi is "
+            "enabled and retry Scan for nearby Wi-Fi. Available networks depend on the "
+            "adapter, driver, location, and the OS scan results."
+        )
+    elif len(networks) == 1:
+        st.info(
+            "The operating system currently reports one visible network. The list below "
+            "shows it; other nearby access points will appear only if Windows detects them."
+        )
     render_network_table(networks)
 
     health_score, health_label = network_health(

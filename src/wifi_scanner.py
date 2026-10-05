@@ -38,6 +38,77 @@ def _parse_windows(output):
     return networks
 
 
+def _parse_windows_interfaces(output):
+    interfaces = []
+    current = None
+
+    def save_current():
+        if current and current.get("ssid") and current.get("state", "").lower() == "connected":
+            interfaces.append(current.copy())
+
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if re.match(r"^Name\s*:", line, re.IGNORECASE):
+            save_current()
+            current = {"interface": line.split(":", 1)[1].strip()}
+        elif current is not None and ":" in line:
+            key, value = (part.strip() for part in line.split(":", 1))
+            field = key.lower()
+            if field == "ap bssid":
+                current["bssid"] = value
+            elif field in {"state", "ssid", "bssid", "channel", "signal", "rssi"}:
+                current[field] = value
+
+    save_current()
+    return interfaces
+
+
+def _merge_windows_interface_details(networks, interfaces):
+    merged = [network.copy() for network in networks]
+    for interface in interfaces:
+        ssid = interface.get("ssid")
+        if not ssid:
+            continue
+
+        network = next(
+            (
+                item
+                for item in merged
+                if (item.get("ssid") or "").casefold() == ssid.casefold()
+            ),
+            None,
+        )
+        if network is None:
+            network = {
+                "ssid": ssid,
+                "bssid": "",
+                "signal": None,
+                "signal_percent": None,
+                "channel": None,
+                "security": "Unknown",
+            }
+            merged.append(network)
+
+        network["connection_status"] = "Connected"
+        network["interface"] = interface.get("interface")
+        if interface.get("bssid"):
+            network["bssid"] = interface["bssid"]
+        if interface.get("signal"):
+            match = re.search(r"\d+", interface["signal"])
+            if match:
+                network["signal_percent"] = int(match.group())
+        if interface.get("rssi"):
+            match = re.search(r"-?\d+", interface["rssi"])
+            if match:
+                network["signal"] = int(match.group())
+        elif network.get("signal") is None and network.get("signal_percent") is not None:
+            network["signal"] = round(-100 + network["signal_percent"] * 0.8, 1)
+        if interface.get("channel", "").isdigit():
+            network["channel"] = int(interface["channel"])
+
+    return merged
+
+
 def _parse_linux(output):
     networks = []
     for line in output.splitlines():
@@ -59,7 +130,13 @@ def scan_wifi_networks():
     if platform.system() == "Windows":
         if not shutil.which("netsh"):
             raise RuntimeError("Windows netsh is unavailable")
-        return _parse_windows(_run(["netsh", "wlan", "show", "networks", "mode=bssid"]))
+        networks = _parse_windows(
+            _run(["netsh", "wlan", "show", "networks", "mode=bssid"])
+        )
+        interfaces = _parse_windows_interfaces(
+            _run(["netsh", "wlan", "show", "interfaces"])
+        )
+        return _merge_windows_interface_details(networks, interfaces)
     if platform.system() == "Linux":
         if not shutil.which("nmcli"):
             raise RuntimeError("nmcli is unavailable; install NetworkManager")
