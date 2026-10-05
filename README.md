@@ -2,6 +2,10 @@
 
 This project implements adaptive IEEE 802.11 transmission-rate selection using machine learning. It reads live wireless measurements such as RSSI, SNR, packet loss, latency, throughput, channel utilization, and current rate, then predicts the best transmission rate for the current network conditions. The main dataset used in this project is `data/WiFi_Transmission_Rate_Recommendation_Dataset_5000.xlsx`.
 
+## Live demo
+
+The hosted Streamlit dashboard is available at [Adaptive Wi-Fi Rate Intelligence](https://ieee80211-wireless-network-hamj7j5enebbygraxkuzpv.streamlit.app/). On the hosted instance, use **Manual input** for measurements: Wi-Fi scanning on a cloud server can only see networks available to that server.
+
 ## Setup and Installation
 ```bash
 pip install -r requirements.txt
