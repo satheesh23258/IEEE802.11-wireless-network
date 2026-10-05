@@ -1,6 +1,8 @@
 import json
 import os
+import platform
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -44,6 +46,7 @@ FEATURE_LABELS = {
     "channel_utilization": "Channel utilization",
     "current_transmission_rate": "Current rate",
 }
+AUTO_SCAN_INTERVAL_SECONDS = 30
 
 
 def model_paths():
@@ -76,7 +79,8 @@ def network_label(network):
     signal_text = f"{signal:.0f} dBm" if signal is not None else "N/A"
     percent = network.get("signal_percent")
     percent_text = f" ({percent}% strength)" if percent is not None else ""
-    return f"{network.get('ssid') or '<hidden>'} | Signal {signal_text}{percent_text} | Ch {network.get('channel') or 'N/A'} | {network.get('security') or 'Unknown'}"
+    bssid = network.get("bssid") or "Not reported"
+    return f"{network.get('ssid') or '<hidden>'} | BSSID {bssid} | Signal {signal_text}{percent_text} | Ch {network.get('channel') or 'N/A'} | {network.get('security') or 'Unknown'}"
 
 
 def scan_and_store():
@@ -84,10 +88,12 @@ def scan_and_store():
         st.session_state.networks = scan_wifi_networks()
         st.session_state.scan_error = None
         st.session_state.last_scan = datetime.now().strftime("%H:%M:%S")
+        st.session_state.last_scan_epoch = time.time()
     except Exception as exc:
-        st.session_state.networks = []
+        st.session_state.setdefault("networks", [])
         st.session_state.scan_error = str(exc)
         st.session_state.last_scan = datetime.now().strftime("%H:%M:%S")
+        st.session_state.last_scan_epoch = time.time()
 
 
 def network_health(rssi, snr, packet_loss, latency, throughput, utilization):
@@ -118,7 +124,10 @@ def record_prediction(record):
 
 def render_network_table(networks):
     if not networks:
-        st.info("No nearby Wi-Fi networks were detected. Manual measurements are still available.")
+        st.info(
+            "No networks appeared in the latest scan. Use Scan now or enable automatic "
+            "scanning to retry every 30 seconds. Manual measurements are still available."
+        )
         return
     network_df = pd.DataFrame(networks)
     columns = [column for column in ["ssid", "bssid", "signal", "signal_percent", "channel", "security"] if column in network_df]
@@ -132,6 +141,7 @@ def render_network_table(networks):
             "security": "Security",
         }
     )
+    display_df = display_df.replace(r"^\s*$", "Not reported", regex=True).fillna("Not reported")
     st.dataframe(display_df, hide_index=True, width="stretch")
 
 
@@ -184,9 +194,46 @@ def render_retraining():
             st.error(f"Retraining failed: {exc}")
 
 
+def render_policy():
+    st.subheader("Website policy and local data handling")
+    st.markdown(
+        """
+        This project is a local diagnostic and research tool for adaptive IEEE 802.11 transmission-rate selection.
+        It is designed to help users evaluate wireless link quality and receive model-based recommendations, not to
+        modify hardware drivers or silently connect to protected networks.
+
+        #### Data we process
+        - Wi-Fi scan results exposed by the local operating system, such as SSID, BSSID, signal strength, channel, and security type.
+        - User-entered wireless measurements, including RSSI, SNR, packet loss, latency, throughput, and current transmission rate.
+        - Prediction history stored locally when users save results from the dashboard.
+
+        #### How the data is used
+        - The app processes measurements on the local device to calculate a wireless link-health score.
+        - The trained model uses those measurements to predict the most suitable transmission rate.
+        - All analysis is performed in-session and does not require a remote service or cloud backend.
+
+        #### Storage and sharing
+        - Prediction history is saved locally under the project's `results/predictions/` folder when the user chooses to keep it.
+        - CSV export files are generated only when the user explicitly downloads them.
+        - This site does not use third-party tracking or analytics for Wi-Fi measurements by default.
+
+        #### Limitations
+        - Recommendations are advisory only; they do not change the adapter's hardware configuration.
+        - The system cannot guarantee performance in every environment because wireless conditions vary by device, driver, and location.
+        - Protected or hidden networks remain unavailable unless the operating system exposes the required metadata.
+
+        #### Responsibility
+        Users are responsible for validating any recommendation against their own network policy, hardware constraints, and operational requirements.
+        This tool should be used as an educational or diagnostic aid, not as a production network control system.
+        """
+    )
+    st.info("No telemetry is sent to a remote service as part of normal prediction logic. Data remains on the local machine unless manually exported by the user.")
+
+
 st.session_state.setdefault("networks", [])
 st.session_state.setdefault("scan_error", None)
 st.session_state.setdefault("last_scan", "not yet scanned")
+st.session_state.setdefault("last_scan_epoch", 0.0)
 st.session_state.setdefault("prediction_history", [])
 st.session_state.setdefault("last_prediction_signature", None)
 
@@ -200,11 +247,16 @@ with st.sidebar:
     refresh_col, auto_col = st.columns(2)
     if refresh_col.button("Scan now", icon=":material/refresh:", width="stretch"):
         scan_and_store()
-    auto_refresh = auto_col.toggle("Auto scan", value=False, help="Refresh nearby network data every 30 seconds.")
-    if not st.session_state.networks:
+    auto_refresh = auto_col.toggle(
+        "Auto scan",
+        value=True,
+        key="auto_scan_enabled",
+        help="Automatically rescan nearby Wi-Fi networks every 30 seconds.",
+    )
+    if not st.session_state.networks and not st.session_state.last_scan_epoch:
         scan_and_store()
     if auto_refresh:
-        st.caption("Automatic scanning is enabled. Refresh the page every 30 seconds for new measurements.")
+        st.caption(f"Automatic scan every {AUTO_SCAN_INTERVAL_SECONDS} seconds.")
     st.caption(f"Last scan: {st.session_state.last_scan}")
     if st.session_state.scan_error:
         st.warning(f"Wi-Fi scan unavailable: {st.session_state.scan_error}")
@@ -227,14 +279,41 @@ with st.sidebar:
     current_rate = st.number_input("Current TX rate (Mbps)", 0.0, 1000.0, 48.0, 0.1)
 
 
-dashboard_tab, comparison_tab, data_tab = st.tabs([
+@st.fragment(
+    run_every=(
+        f"{AUTO_SCAN_INTERVAL_SECONDS}s"
+        if st.session_state.get("auto_scan_enabled", True)
+        else None
+    )
+)
+def refresh_wifi_networks():
+    if not st.session_state.get("auto_scan_enabled", True):
+        return
+    if time.time() - st.session_state.get("last_scan_epoch", 0.0) < AUTO_SCAN_INTERVAL_SECONDS:
+        return
+
+    previous_networks = st.session_state.networks.copy()
+    previous_error = st.session_state.scan_error
+    scan_and_store()
+    if (
+        st.session_state.networks != previous_networks
+        or st.session_state.scan_error != previous_error
+    ):
+        st.rerun()
+
+
+refresh_wifi_networks()
+
+
+dashboard_tab, comparison_tab, data_tab, policy_tab = st.tabs([
     "Dashboard",
     "Model comparison",
     "Data and retraining",
+    "Website policy",
 ])
 
 with dashboard_tab:
-    st.subheader(f"Nearby Wi-Fi networks ({len(networks)} detected by Windows)")
+    st.subheader(f"Nearby Wi-Fi networks ({len(networks)} detected by {platform.system()})")
     if len(networks) == 1:
         st.info("Windows currently reports one visible network. Click 'Scan now' after a few seconds to refresh the wireless adapter cache.")
     render_network_table(networks)
@@ -337,3 +416,6 @@ with comparison_tab:
 
 with data_tab:
     render_retraining()
+
+with policy_tab:
+    render_policy()

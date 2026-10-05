@@ -31,12 +31,20 @@ streamlit run app/web_app.py
 
 Then open `http://localhost:8501`.
 
-The dashboard also shows the model's test accuracy, macro F1-score, feature importance, rate adjustment from the current setting, and a warning when the link conditions are weak.
+The dashboard scans for nearby networks on startup and automatically refreshes the scan every 30 seconds by default. Use **Scan now** for an immediate refresh or turn off **Auto scan** to stop periodic scans. The dashboard also shows the model's test accuracy, macro F1-score, feature importance, rate adjustment from the current setting, and a warning when the link conditions are weak.
+
+## Website policy and local data handling
+
+- The dashboard is designed for local, on-device wireless analysis. It reads nearby Wi-Fi metadata and manually supplied network measurements to estimate link health and recommend a transmission rate.
+- The app does not upload scan data to a remote backend during normal prediction use, and it does not use third-party analytics or tracking scripts in the default workflow.
+- Prediction history and exported CSV files are stored locally in the project unless the user explicitly downloads or shares them.
+- All recommendations are advisory only. The project does not change the adapter's configured rate, connect to protected networks, or force any hardware changes.
 
 ## Wi-Fi scanner behavior
 
 - Windows uses `netsh wlan show networks mode=bssid`.
 - Linux uses `nmcli`; NetworkManager must be installed.
+- The web app runs the scanner on the machine hosting Streamlit. To see networks around your device, run the app locally on that device; a remotely hosted website can only scan the server's Wi-Fi environment.
 - A scan can normally expose SSID, BSSID, signal, channel, and security, but drivers may omit some of these fields.
 - Packet loss, latency, throughput, SNR, channel utilization, and current TX rate are connected-network measurements. The GUI leaves them blank until the user supplies real measurements.
 - The application recommends a rate only. It does not change the adapter's hardware rate or connect to protected networks.
