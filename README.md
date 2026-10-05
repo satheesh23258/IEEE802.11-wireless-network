@@ -33,11 +33,23 @@ Then open `http://localhost:8501`.
 
 The dashboard scans for nearby networks on startup and automatically refreshes the scan every 30 seconds by default. Use **Scan now** for an immediate refresh or turn off **Auto scan** to stop periodic scans. The dashboard also shows the model's test accuracy, macro F1-score, feature importance, rate adjustment from the current setting, and a warning when the link conditions are weak.
 
+## Deploy on Streamlit Community Cloud
+
+The web app can be deployed from this GitHub repository on [Streamlit Community Cloud](https://share.streamlit.io/):
+
+1. Sign in to Streamlit Community Cloud using the GitHub account that can access this repository.
+2. Select **Create app** and choose **Yup, I have an app**.
+3. Set the repository to `satheesh23258/IEEE802.11-wireless-network`, branch to `master`, and app file path to `app/web_app.py`.
+4. In **Advanced settings**, select Python 3.12 to match the model's tested Python environment.
+5. Deploy. The root `requirements.txt` contains the app dependencies, and `models/best_model.pkl` is tracked with Git LFS.
+
+When hosted remotely, the app runs on the hosting server. Its Wi-Fi scan can only inspect networks visible to that server, not networks near each visitor. If scanning is unavailable on the host, use **Manual input** and enter measurements directly. Values submitted to a remotely hosted app are processed by the hosting provider, so do not enter sensitive network information unless you trust that provider. Session history is not a durable database, and uploaded files or generated files on a hosted instance may be temporary.
+
 ## Website policy and local data handling
 
-- The dashboard is designed for local, on-device wireless analysis. It reads nearby Wi-Fi metadata and manually supplied network measurements to estimate link health and recommend a transmission rate.
-- The app does not upload scan data to a remote backend during normal prediction use, and it does not use third-party analytics or tracking scripts in the default workflow.
-- Prediction history and exported CSV files are stored locally in the project unless the user explicitly downloads or shares them.
+- When run locally, the dashboard processes scan data and measurements on the local machine. When hosted remotely, submitted measurements are processed by that hosting server.
+- The default prediction workflow does not use a separate analytics service or remote prediction backend.
+- Prediction history is session-scoped, and CSV files are provided only when the user explicitly downloads them. Hosted filesystem changes may not persist across restarts.
 - All recommendations are advisory only. The project does not change the adapter's configured rate, connect to protected networks, or force any hardware changes.
 
 ## Wi-Fi scanner behavior

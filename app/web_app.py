@@ -205,15 +205,15 @@ def render_policy():
         #### Data we process
         - Wi-Fi scan results exposed by the local operating system, such as SSID, BSSID, signal strength, channel, and security type.
         - User-entered wireless measurements, including RSSI, SNR, packet loss, latency, throughput, and current transmission rate.
-        - Prediction history stored locally when users save results from the dashboard.
+        - Prediction history held in the current app session and CSV files explicitly downloaded by users.
 
         #### How the data is used
         - The app processes measurements on the local device to calculate a wireless link-health score.
         - The trained model uses those measurements to predict the most suitable transmission rate.
-        - All analysis is performed in-session and does not require a remote service or cloud backend.
+        - Measurements are processed by the machine running this Streamlit app. When hosted remotely, submitted values are sent to that host for processing.
 
         #### Storage and sharing
-        - Prediction history is saved locally under the project's `results/predictions/` folder when the user chooses to keep it.
+        - Session history is not a permanent database. Uploaded training files and generated artifacts on a hosted service may be temporary and subject to that host's storage policies.
         - CSV export files are generated only when the user explicitly downloads them.
         - This site does not use third-party tracking or analytics for Wi-Fi measurements by default.
 
@@ -227,7 +227,7 @@ def render_policy():
         This tool should be used as an educational or diagnostic aid, not as a production network control system.
         """
     )
-    st.info("No telemetry is sent to a remote service as part of normal prediction logic. Data remains on the local machine unless manually exported by the user.")
+    st.info("No separate analytics service is used by normal prediction logic. If this app is hosted remotely, measurements are processed by the hosting provider's server; use only data you are comfortable submitting to that host.")
 
 
 st.session_state.setdefault("networks", [])
